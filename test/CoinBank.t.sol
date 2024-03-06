@@ -24,7 +24,7 @@ contract CoinBankTest is Test {
   
     }
 
-    function test_deposit_increase_user_balance() public {
+    function test_deposit() public {
         token.transfer(user1, 100000);
         vm.startPrank(user1);
         (, int128 before_balance) = cb.getTokenBalanceAndAllowance(user1);
@@ -35,6 +35,41 @@ contract CoinBankTest is Test {
         assertEq(after_balance, 1000);
     }
 
-    
+    function test_increase_allowance() public {
+        (int128 before_allowance,) = cb.getTokenBalanceAndAllowance(user1);
+        assertEq(before_allowance, 0);
+        cb.increaseTokenAllowance(user1, 1000, true);
+        (int128 after_allowance,) = cb.getTokenBalanceAndAllowance(user1);
+        assertEq(after_allowance, 1000);     
+    }
+
+    function test_decrease_allowance() public {
+        (int128 before_allowance,) = cb.getTokenBalanceAndAllowance(user1);
+        assertEq(before_allowance, 0);
+        cb.increaseTokenAllowance(user1, 1000, false);
+        (int128 after_allowance,) = cb.getTokenBalanceAndAllowance(user1);
+        assertEq(after_allowance, -1000); 
+    }
+
+    function test_withdrawal() public {
+        token.transfer(user1, 10000);
+        vm.startPrank(user1);
+        token.approve(address(cb), 10000);
+        cb.deposit(1000);
+        cb.withdraw(500, user1);
+        assertEq(token.balanceOf(user1), 9500);
+        vm.stopPrank();
+        cb.increaseTokenAllowance(user1, 1000, true);
+        token.transfer(address(cb), 10000);
+        vm.startPrank(user1);
+        cb.withdraw(1500, user1);
+        assertEq(token.balanceOf(user1), 11000);
+        cb.deposit(1000);
+        vm.stopPrank();
+        cb.increaseTokenAllowance(user1, 1000, false);
+        vm.startPrank(user1);
+        vm.expectRevert("insufficient user balance");
+        cb.withdraw(1000, user1);
+    }
 
 }
